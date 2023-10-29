@@ -1,9 +1,9 @@
-use std::io::{Read, Write};
-use std::sync::{Arc, RwLock};
-use std::path::PathBuf;
-use serde::{Serialize, Deserialize};
-use std::fs::File;
 use once_cell::sync::Lazy;
+use serde::{Deserialize, Serialize};
+use std::fs::File;
+use std::io::{Read, Write};
+use std::path::PathBuf;
+use std::sync::{Arc, RwLock};
 
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct Config {
@@ -24,14 +24,19 @@ impl Config {
     pub fn open() -> Self {
         let mut file = File::open(CONFIG_FILE).unwrap_or_else(|_| {
             let mut f = File::create(CONFIG_FILE).unwrap();
-            f.write_all(toml::to_string_pretty(&Config::default()).unwrap().as_bytes()).unwrap();
+            f.write_all(
+                toml::to_string_pretty(&Config::default())
+                    .unwrap()
+                    .as_bytes(),
+            )
+            .unwrap();
             File::open(CONFIG_FILE).unwrap()
         });
         let mut contents = String::new();
         file.read_to_string(&mut contents).unwrap();
         toml::from_str(&contents).unwrap_or_default()
     }
-    
+
     pub fn save(&self) {
         let mut file = File::create(CONFIG_FILE).unwrap();
         let contents = toml::to_string_pretty(self).unwrap();
@@ -46,7 +51,6 @@ pub trait ConfigTrait {
     fn project_summary(&self) -> String;
     fn set_repo_location(&self, repo_location: PathBuf);
     fn set_project_summary(&self, project_summary: String);
-    
 }
 
 impl ConfigTrait for AppConfig {
@@ -69,12 +73,12 @@ impl ConfigTrait for AppConfig {
         let config = self.read().unwrap();
         config.project_summary.clone()
     }
-    
+
     fn set_repo_location(&self, repo_location: PathBuf) {
         let mut config = self.write().unwrap();
         config.repo_location = Some(repo_location);
     }
-    
+
     fn set_project_summary(&self, project_summary: String) {
         let mut config = self.write().unwrap();
         config.project_summary = project_summary;

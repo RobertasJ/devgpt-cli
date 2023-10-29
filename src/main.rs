@@ -1,18 +1,22 @@
-#![feature(async_fn_in_trait)]
-
+use crate::config::CONFIG;
+use dotenv::dotenv;
+use env_logger::Env;
+use log::{debug, trace};
+use openai_macros::{ai_agent, message};
+use openai_utils::api_key;
 use std::env;
 use std::fmt::Display;
 use std::io::Write;
-use dotenv::dotenv;
-use env_logger::Env;
+use std::path::{Path, PathBuf};
+use serde_json::from_str;
+use tiktoken_rs::cl100k_base;
 use walkdir::DirEntry;
-use crate::config::CONFIG;
-use openai_utils::api_key;
-use openai_macros::{ai_agent, message};
-use log::{debug, trace};
+use crate::ctags::CtagsOutput;
 
 mod config;
+mod ctags;
 mod macros;
+mod tiktoken;
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
@@ -22,8 +26,16 @@ async fn main() -> anyhow::Result<()> {
     trace!("dotenv has been set up");
     api_key(env::var("OPENAI_API_KEY")?);
     trace!("openai_api_key has been set has been set up");
-    let res = blacklist().await?;
-    let _res = get_files(res)?;
+
+    let blacklist = blacklist().await?;
+
+    let tags: CtagsOutput = CtagsOutput::get_tags(&as_paths(&blacklist)).tags();
+
+    let bpe = cl100k_base()?;
+
+    let readable = tags.max_slices(&bpe, 4096);
+
+    // debug!("{readable:#?}");
 
     Ok(())
 }
@@ -67,7 +79,7 @@ fn get_root_entries() -> anyhow::Result<Vec<String>> {
     Ok(entries)
 }
 
-async fn blacklist() -> anyhow::Result<Vec<String>> {
+async fn blacklist() -> anyhow::Result<Vec<PathBuf>> {
     let project_summary = CONFIG.read().unwrap().project_summary.clone();
 
     // Get root level entries
@@ -76,9 +88,9 @@ async fn blacklist() -> anyhow::Result<Vec<String>> {
     let agent = ai_agent! {
         model: "gpt-3.5-turbo",
         temperature: 0.0,
-        system_message: "The user is going to give you the type of project and your job is to provide a list of files and folders that are not part of the code itself. You have to respond in a JSON array format.",
+        system_message: "Your job is to filter paths that contain build files from the root directory. You have to respond in a JSON array format.",
         messages: [
-            message!(user, content: r#"a generic nodejs app: [
+            message!(system, user: "example_input", content: r#"[
               "app.js",
               "dist",
               "build",
@@ -93,8 +105,8 @@ async fn blacklist() -> anyhow::Result<Vec<String>> {
               "tests",
               "node_modules"
             ]"#),
-            message!(assistant, content: r#"["node_modules", "dist", "build"]"#),
-            message!(user, content: format!("{}: {:?}", project_summary, root_entries)),
+            message!(system, user: "example_response", content: r#"["node_modules", "dist", "build"]"#),
+            message!(user, content: format!("{}", serde_json::to_string_pretty(&root_entries).unwrap())),
         ],
     };
 
@@ -104,4 +116,9 @@ async fn blacklist() -> anyhow::Result<Vec<String>> {
     debug!("blacklist: {res:#?}");
     Ok(res)
 
+}
+
+
+fn as_paths(v: &Vec<PathBuf>) -> Vec<&Path> {
+    v.iter().map(PathBuf::as_path).collect::<Vec<_>>()
 }
