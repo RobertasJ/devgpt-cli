@@ -11,16 +11,18 @@ use std::path::{Path, PathBuf};
 use serde_json::from_str;
 use tiktoken_rs::cl100k_base;
 use walkdir::DirEntry;
-use crate::ctags::CtagsOutput;
+use crate::ctags::{Ctag, CtagsOutput};
 
 mod config;
 mod ctags;
 mod macros;
 mod tiktoken;
 
+
+/// main function description
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
-    env_logger::Builder::from_env(Env::default().default_filter_or("trace")).init();
+    env_logger::Builder::from_env(Env::default().default_filter_or("info")).init();
     trace!("env_logger has been set up");
     dotenv()?;
     trace!("dotenv has been set up");
@@ -29,39 +31,15 @@ async fn main() -> anyhow::Result<()> {
 
     let blacklist = blacklist().await?;
 
-    let tags: CtagsOutput = CtagsOutput::get_tags(&as_paths(&blacklist)).tags();
+    let tags: CtagsOutput = CtagsOutput::get_tags(&as_paths(&blacklist)).tags()
+        // .find_tags("A tag with a documentation commend ///").await
+        ;
 
     let bpe = cl100k_base()?;
 
-    let readable = tags.max_slices(&bpe, 4096);
-
-    // debug!("{readable:#?}");
+    println!("{tags:#?}");
 
     Ok(())
-}
-
-fn get_files(input: Vec<impl Display>) -> anyhow::Result<Vec<DirEntry>> {
-    let project_dir = CONFIG.read().unwrap().clone().repo_location.unwrap();
-    let walkdir = walkdir::WalkDir::new(project_dir);
-
-    let filter = |e: &DirEntry| {
-        for n in input.iter().map(|s| s.to_string()) {
-            if e.file_name().to_str().unwrap() == n {
-                return false;
-            }
-        }
-        true
-    };
-
-    let res = walkdir
-        .into_iter()
-        .filter_entry(filter)
-        .filter(|e| !e.as_ref().unwrap().file_type().is_dir())
-        .collect::<Result<Vec<_>, walkdir::Error>>()
-        .map_err(|e| anyhow::Error::msg(e.to_string()))?;
-
-    debug!("project files: {res:#?}");
-    Ok(res)
 }
 
 fn get_root_entries() -> anyhow::Result<Vec<String>> {
@@ -86,7 +64,7 @@ async fn blacklist() -> anyhow::Result<Vec<PathBuf>> {
     let root_entries = get_root_entries()?;
 
     let agent = ai_agent! {
-        model: "gpt-3.5-turbo",
+        model: "gpt-4",
         temperature: 0.0,
         system_message: "Your job is to filter paths that contain build files from the root directory. You have to respond in a JSON array format.",
         messages: [
@@ -112,7 +90,7 @@ async fn blacklist() -> anyhow::Result<Vec<PathBuf>> {
 
     let chat = agent.create().await?;
     let res = chat.choices[0].message.content.clone().unwrap();
-    let res = serde_json::from_str(&res).map_err(|e| anyhow::Error::msg(e.to_string()))?;
+    let res = from_str(&res).map_err(|e| anyhow::Error::msg(e.to_string()))?;
     debug!("blacklist: {res:#?}");
     Ok(res)
 
@@ -122,3 +100,4 @@ async fn blacklist() -> anyhow::Result<Vec<PathBuf>> {
 fn as_paths(v: &Vec<PathBuf>) -> Vec<&Path> {
     v.iter().map(PathBuf::as_path).collect::<Vec<_>>()
 }
+
