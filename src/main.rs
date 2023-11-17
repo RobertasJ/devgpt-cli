@@ -19,7 +19,7 @@ mod macros;
 mod tiktoken;
 
 
-/// main function description
+//DEV: Hello
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
     env_logger::Builder::from_env(Env::default().default_filter_or("info")).init();
@@ -31,11 +31,8 @@ async fn main() -> anyhow::Result<()> {
 
     let blacklist = blacklist().await?;
 
-    let tags: CtagsOutput = CtagsOutput::get_tags(&as_paths(&blacklist)).tags()
-        // .find_tags("A tag with a documentation commend ///").await
-        ;
-
-    let bpe = cl100k_base()?;
+    let binding = CtagsOutput::get_tags(&as_paths(&blacklist)).tags();
+    let tags = binding.0.iter().filter(|t| t.kind_is("devgpt")).collect::<Vec<_>>();
 
     println!("{tags:#?}");
 
@@ -64,9 +61,9 @@ async fn blacklist() -> anyhow::Result<Vec<PathBuf>> {
     let root_entries = get_root_entries()?;
 
     let agent = ai_agent! {
-        model: "gpt-4",
+        model: "gpt-4-1106-preview",
         temperature: 0.0,
-        system_message: "Your job is to filter paths that contain build files from the root directory. You have to respond in a JSON array format.",
+        system_message: "Your job is to filter paths that contain build files from the root directory. You have to respond in a JSON array format. DO NOT FILTER OUT CONFIG OR SOURCE FILES. remember to not include anything before or after the array, your answer will have to be parsed by a computer.",
         messages: [
             message!(system, user: "example_input", content: r#"[
               "app.js",
