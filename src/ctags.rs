@@ -30,7 +30,7 @@ pub struct Ctag {
     #[serde(default)]
     pub scope_kind: Option<String>,
     #[serde(default)]
-    pub line: Option<u64>,
+    pub line: Option<u32>,
 }
 
 impl Ctag {
@@ -50,9 +50,9 @@ impl Ctag {
         }
     }
 
-    pub fn kind_is(&self, kind: &str) -> bool {
+    pub fn kind_contains(&self, kind: &str) -> bool {
         if let Some(f) = &self.kind {
-            f == kind
+            f.contains(kind)
         } else {
             false
         }
@@ -66,9 +66,9 @@ impl Ctag {
         }
     }
 
-    pub fn name_is(&self, path: &str) -> bool {
+    pub fn name_contains(&self, path: &str) -> bool {
         if let Some(f) = &self.name {
-            f == path
+            f.contains(path)
         } else {
             false
         }
