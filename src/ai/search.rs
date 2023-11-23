@@ -1,6 +1,7 @@
 use std::ops::Range;
 use std::path::{Path, PathBuf};
 use openai_macros::{ai_agent, message};
+use openai_utils::NoArgs;
 use schemars::JsonSchema;
 use serde_derive::{Deserialize, Serialize};
 use crate::ai::blacklist;
@@ -30,30 +31,51 @@ async fn find_file(predicate: &str) -> PathBuf {
         messages: message!(user, content: format!("predicate: {predicate}"))
     };
     
-    let mut result = CtagsOutput::default();
-
-    finder.push_function(|args: FindNameArgs| {
+    let mut result = CtagsOutput(vec![]);
+    
+    let find_name = |args: FindNameArgs| {
         let tags = CtagsOutput::get_tags(&as_paths(&BLACKLIST));
-        result.0.extend(tags.0.iter().filter(|t| t.name_contains(&args.name)).cloned());
-    });
-    finder.push_function(|args: FindPathArgs| {
+        result = CtagsOutput(tags.0.iter().filter(|t| t.name_contains(&args.name)).cloned().collect());
+    };
+    
+    finder.push_function(find_name);
+    
+    let find_path = |args: FindPathArgs| {
         let tags = CtagsOutput::get_tags(&as_paths(&BLACKLIST));
-        result.0.extend(tags.0.iter().filter(|t| t.path_is(&args.path)).cloned());
-    });
-    finder.push_function(|args: FindKindArgs| {
+        result = CtagsOutput(tags.0.iter().filter(|t| t.path_is(&args.path)).cloned().collect());
+    };
+    
+    finder.push_function(find_path);
+    
+    let find_kind = |args: FindKindArgs| {
         let tags = CtagsOutput::get_tags(&as_paths(&BLACKLIST));
         result.0.extend(tags.0.iter().filter(|t| t.kind_contains(&args.kind)).cloned());
-    });
-    finder.push_function(|args: FindLineRangeArgs| {
+    };
+    
+    finder.push_function(find_kind);
+    
+    let find_line_range = |args: FindLineRangeArgs| {
         let tags = CtagsOutput::get_tags(&as_paths(&BLACKLIST));
-        result.0.extend(tags.0.iter().filter(|t| {
+        result = CtagsOutput(tags.0.iter().filter(|t| {
             if let Some(line) = t.line {
                 line >= args.from && line <= args.to
             } else {
                 false
             }
-        }).cloned());
-    });
+        }).cloned().collect());
+    };
+    
+    finder.push_function(find_line_range);
+    
+    let mut stop = false;
+    
+    let stop_searching = |_args: NoArgs| {
+        stop = true;
+    };
+    
+    finder.push_function(stop_searching);
+    
+    
     
     todo!()
 }
