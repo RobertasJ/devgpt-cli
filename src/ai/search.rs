@@ -30,12 +30,30 @@ async fn find_file(predicate: &str) -> PathBuf {
         messages: message!(user, content: format!("predicate: {predicate}"))
     };
     
-    finder.push_function(find_name);
-    finder.push_function(find_kind);
-    finder.push_function(find_path);
-    finder.push_function(find_line_range);
-    
-    
+    let mut result = CtagsOutput::default();
+
+    finder.push_function(|args: FindNameArgs| {
+        let tags = CtagsOutput::get_tags(&as_paths(&BLACKLIST));
+        result.0.extend(tags.0.iter().filter(|t| t.name_contains(&args.name)).cloned());
+    });
+    finder.push_function(|args: FindPathArgs| {
+        let tags = CtagsOutput::get_tags(&as_paths(&BLACKLIST));
+        result.0.extend(tags.0.iter().filter(|t| t.path_is(&args.path)).cloned());
+    });
+    finder.push_function(|args: FindKindArgs| {
+        let tags = CtagsOutput::get_tags(&as_paths(&BLACKLIST));
+        result.0.extend(tags.0.iter().filter(|t| t.kind_contains(&args.kind)).cloned());
+    });
+    finder.push_function(|args: FindLineRangeArgs| {
+        let tags = CtagsOutput::get_tags(&as_paths(&BLACKLIST));
+        result.0.extend(tags.0.iter().filter(|t| {
+            if let Some(line) = t.line {
+                line >= args.from && line <= args.to
+            } else {
+                false
+            }
+        }).cloned());
+    });
     
     todo!()
 }
@@ -47,21 +65,11 @@ struct FindNameArgs {
     name: String,
 }
 
-fn find_name(args: FindNameArgs) -> CtagsOutput {
-    let tags = CtagsOutput::get_tags(&as_paths(&BLACKLIST));
-    CtagsOutput(tags.0.iter().filter(|t| t.name_contains(&args.name)).collect())
-}
-
 #[derive(Default, Clone, Debug, Deserialize, Serialize, JsonSchema)]
 #[schemars(description = "Checks if the tag path is the path specified")]
 struct FindPathArgs {
     #[schemars(description = "The path specified")]
     path: PathBuf,
-}
-
-fn find_path(args: FindPathArgs) -> CtagsOutput {
-    let tags = CtagsOutput::get_tags(&as_paths(&BLACKLIST));
-    CtagsOutput(tags.0.iter().filter(|t| t.path_is(&args.path)).collect())
 }
 
 #[derive(Default, Clone, Debug, Deserialize, Serialize, JsonSchema)]
@@ -71,11 +79,6 @@ struct FindKindArgs {
     kind: String,
 }
 
-fn find_kind(args: FindKindArgs) -> CtagsOutput {
-    let tags = CtagsOutput::get_tags(&as_paths(&BLACKLIST));
-    CtagsOutput(tags.0.iter().filter(|t| t.kind_contains(&args.kind)).collect())
-}
-
 #[derive(Default, Clone, Debug, Deserialize, Serialize, JsonSchema)]
 #[schemars(description = "Checks if a tag is within an inclusive range")]
 struct FindLineRangeArgs {
@@ -83,17 +86,6 @@ struct FindLineRangeArgs {
     from: u32,
     #[schemars(description = "the end of the range")]
     to: u32,
-}
-
-fn find_line_range(args: FindLineRangeArgs) -> CtagsOutput {
-    let tags = CtagsOutput::get_tags(&as_paths(&BLACKLIST));
-    CtagsOutput(tags.0.iter().filter(|t| {
-        if let Some(line) = t.line {
-            line >= args.from && line <= args.to
-        } else {
-            false
-        }
-    }).collect())
 }
 
 #[cfg(test)]
