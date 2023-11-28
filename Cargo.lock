@@ -178,7 +178,7 @@ dependencies = [
  "log",
  "once_cell",
  "openai-macros",
- "openai-utils 0.4.1",
+ "openai-utils 0.5.1",
  "schemars",
  "serde",
  "serde_derive",
@@ -785,9 +785,9 @@ dependencies = [
 
 [[package]]
 name = "openai-utils"
-version = "0.4.1"
+version = "0.5.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "9635971ed30843930631050186690270d5c9669599de19d948d8769314d8c99a"
+checksum = "619d7d4b786b6512d36497e627c49a4b747a45f8b7eaf64fe2b5e02411c0b178"
 dependencies = [
  "anyhow",
  "dotenv",

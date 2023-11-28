@@ -7,8 +7,7 @@ use std::sync::{Arc, RwLock};
 
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct Config {
-    pub repo_location: Option<PathBuf>,
-    pub project_summary: String,
+    pub project_dir: Option<PathBuf>,
 }
 
 const CONFIG_FILE: &str = "config.toml";
@@ -47,10 +46,10 @@ impl Config {
 pub trait ConfigTrait {
     fn save(&self);
     fn open() -> Self;
-    fn repo_location(&self) -> Option<PathBuf>;
-    fn project_summary(&self) -> String;
-    fn set_repo_location(&self, repo_location: PathBuf);
-    fn set_project_summary(&self, project_summary: String);
+    // fn repo_location(&self) -> Option<PathBuf>;
+    // fn project_summary(&self) -> String;
+    // fn set_repo_location(&self, repo_location: PathBuf);
+    // fn set_project_summary(&self, project_summary: String);
 }
 
 impl ConfigTrait for AppConfig {
@@ -64,23 +63,18 @@ impl ConfigTrait for AppConfig {
         Arc::new(RwLock::new(config))
     }
 
-    fn repo_location(&self) -> Option<PathBuf> {
-        let config = self.read().unwrap();
-        config.repo_location.clone()
-    }
-
-    fn project_summary(&self) -> String {
-        let config = self.read().unwrap();
-        config.project_summary.clone()
-    }
-
-    fn set_repo_location(&self, repo_location: PathBuf) {
-        let mut config = self.write().unwrap();
-        config.repo_location = Some(repo_location);
-    }
-
-    fn set_project_summary(&self, project_summary: String) {
-        let mut config = self.write().unwrap();
-        config.project_summary = project_summary;
-    }
+    // fn repo_location(&self) -> Option<PathBuf> {
+    //     let config = self.read().unwrap();
+    //     config.project_dir.clone()
+    // }
+    //
+    // fn set_repo_location(&self, repo_location: PathBuf) {
+    //     let mut config = self.write().unwrap();
+    //     config.project_dir = Some(repo_location);
+    // }
+    //
+    // fn set_project_summary(&self, project_summary: String) {
+    //     let mut config = self.write().unwrap();
+    //     config.project_summary = project_summary;
+    // }
 }

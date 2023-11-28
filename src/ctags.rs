@@ -52,7 +52,7 @@ impl Ctag {
 
     pub fn kind_contains(&self, kind: &str) -> bool {
         if let Some(f) = &self.kind {
-            f.contains(kind)
+            f.to_lowercase().contains(&kind.to_lowercase())
         } else {
             false
         }
@@ -66,9 +66,9 @@ impl Ctag {
         }
     }
 
-    pub fn name_contains(&self, path: &str) -> bool {
+    pub fn name_contains(&self, name: &str) -> bool {
         if let Some(f) = &self.name {
-            f.contains(path)
+            f.to_lowercase().contains(&name.to_lowercase())
         } else {
             false
         }
@@ -77,7 +77,7 @@ impl Ctag {
 
 impl CtagsOutput {
     pub fn get_tags(blacklist: &[&Path]) -> Self {
-        let repo_location = CONFIG.read().unwrap().repo_location.clone().unwrap();
+        let repo_location = CONFIG.read().unwrap().project_dir.clone().unwrap();
 
         let blacklist: Vec<String> = blacklist
             .iter()
@@ -149,7 +149,7 @@ impl CtagsOutput {
                     "--regex-CSS=/\\*\\s*DEV:\\s*(.*?)\\s*\\*\\//\\1/d/",
                     "--kinddef-JavaProperties=d,devgpt,devgpt-comments",
                     "--regex-JavaProperties=/#\\s*DEV:\\s*([^\\n]*)/\\1/d/",
-                    "--fields=\"+n\"",
+                    "--fields=+n",
                     "-R", "--output-format=json", "-f", "-"
                 ];
 

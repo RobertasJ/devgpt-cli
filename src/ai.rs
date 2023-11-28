@@ -7,7 +7,7 @@ use crate::config::CONFIG;
 pub mod search;
 
 fn get_root_entries() -> anyhow::Result<Vec<String>> {
-    let project_dir = CONFIG.read().unwrap().clone().repo_location.unwrap();
+    let project_dir = CONFIG.read().unwrap().clone().project_dir.expect("no project directory found.");
     let read_dir = std::fs::read_dir(project_dir)?;
     
     let mut entries = Vec::new();
@@ -22,8 +22,6 @@ fn get_root_entries() -> anyhow::Result<Vec<String>> {
 }
 
 pub async fn blacklist() -> anyhow::Result<Vec<PathBuf>> {
-    let project_summary = CONFIG.read().unwrap().project_summary.clone();
-    
     // Get root level entries
     let root_entries = get_root_entries()?;
     
